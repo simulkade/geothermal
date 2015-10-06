@@ -81,17 +81,6 @@
 
 \begin_layout Standard
 \begin_inset Formula 
-\[
-(\phi\rho_{f}c_{f}+(1-\phi)\rho_{s}c_{s})\frac{\partial{T}}{\partial t}+\rho_{f}c_{f}\mathbf{u}\cdot\nabla T-\nabla\cdot\lambda_{\mathrm{eff}}\nabla T=0,
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
 \begin{equation}
 h\left(p,T,x_{i}\right)=\sum_{i=1}^{N}x_{i}\hat{h}_{i}\left(p,T,x_{i}\right).
 \end{equation}
