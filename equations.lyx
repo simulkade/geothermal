@@ -1,7 +1,9 @@
-#LyX 2.1 created this file. For more info see http://www.lyx.org/
-\lyxformat 474
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
 \begin_document
 \begin_header
+\save_transient_properties true
+\origin unavailable
 \textclass article
 \use_default_options true
 \maintain_unincluded_children false
@@ -9,16 +11,16 @@
 \language_package default
 \inputencoding auto
 \fontencoding global
-\font_roman default
-\font_sans default
-\font_typewriter default
-\font_math auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
 \font_default_family default
 \use_non_tex_fonts false
 \font_sc false
 \font_osf false
-\font_sf_scale 100
-\font_tt_scale 100
+\font_sf_scale 100 100
+\font_tt_scale 100 100
 \graphics default
 \default_output_format default
 \output_sync 0
@@ -73,6 +75,40 @@
 \begin{equation}
 \frac{\partial}{\partial t}\left(\varphi hC+\left(1-\varphi\right)h_{s}\rho_{s}\right)+\nabla.\left(\mathbf{q}+\sum_{i=1}^{N}\mathbf{N}_{i}\hat{h}_{i}\right)=0,\label{eq:energy-conservation}
 \end{equation}
+
+\end_inset
+
+in a more simplified terms (single component):
+\begin_inset Formula 
+\begin{multline*}
+\frac{\partial}{\partial t}\left(\varphi\rho c_{p,w}\left(T-T_{0}\right)+\left(1-\varphi\right)\rho_{s}c_{p,s}\left(T-T_{0}\right)\right)+\\
++\nabla.\left(-\lambda\nabla T+\rho c_{p,w}\left(T-T_{0}\right)\mathbf{u}\right)=0
+\end{multline*}
+
+\end_inset
+
+To simplify further, 
+\begin_inset Formula $T-T_{0}$
+\end_inset
+
+ can be replaced by a new variable 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+ Ignoring gravity effect, the pressure (continuity equation) reads
+\begin_inset Formula 
+\[
+\frac{\partial}{\partial t}\left(\varphi\rho\right)+\nabla.\left(\rho\mathbf{u}\right)=0,
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\mathbf{u}=-\frac{k}{\mu}\nabla p
+\]
 
 \end_inset
 
@@ -180,7 +216,7 @@ reference "fig:heat-transfer"
 \align center
 \begin_inset Tabular
 <lyxtabular version="3" rows="9" columns="6">
-<features rotate="0" tabularvalignment="middle">
+<features tabularvalignment="middle">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top">
