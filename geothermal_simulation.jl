@@ -120,7 +120,7 @@ mu_init    = createCellVariable(m,
 mu_val     = copyCell(mu_init)
 
 dt_init    = (L*W*thick_res*poros)/flow_inj/50 # (L/Nx)/(u_inj/poros)   # [s] time step
-final_time = 70*dt_init              # [s]
+final_time = 90*dt_init              # [s]
 t_step     = collect([linspace(0, 5*dt_init, 30);
                       linspace(5.5*dt_init, final_time, 70)])
 n_steps = length(t_step) # number of time steps
@@ -138,6 +138,7 @@ M_conductivity = diffusionTerm(-harmonicMean(
 for t_ind in 2:length(t_step)
   dt = t_step[t_ind]-t_step[t_ind-1]
   t  = t_step[t_ind]
+  println(t_ind)
   for i in 1:3 # internal loop
     # solve pressure equation
     RHS_ddt_p   = constantSourceTerm(poros/dt*(rho_val - rho_init))
@@ -151,13 +152,13 @@ for t_ind in 2:length(t_step)
     u = -water_mobil.*gradientTerm(p_val)
 
     # solve heat equation
-    α                  = poros*rho_val*cp_water+(1-poros)*
-        rho_rock*cp_rock
+    α                  = poros*rho_val*cp_water+(1-poros)*rho_rock*cp_rock
+    RHS_ddt_t          = constantSourceTerm(cp_water*poros*theta_val.*(rho_val - rho_init)/dt)
     M_trans, RHS_trans = transientTerm(theta_init, dt, α)
     M_conv             = convectionUpwindTerm(cp_water*rho_face.*u)
     theta_val          = solveLinearPDE(m,
         M_BCt + M_conv + M_trans + M_conductivity,
-        RHS_BCt + RHS_trans)
+        RHS_BCt + RHS_trans - RHS_ddt_t)
 
     # update density and viscosity values
     rho_val.value[:] = polyval(rho_fit, theta_val.value + T0)
@@ -173,7 +174,7 @@ for t_ind in 2:length(t_step)
 end
 dp_res[1] = dp_res[2] # pressure grad at time zero; assume that process has already started
 df = DataFrame(T_s = t_step, dp_Pa = dp_res, T_K = T_out)
-DataFrames.writetable("Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv", df)
+# DataFrames.writetable("Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv", df)
 figure(figsize=(8,2))
 visualizeCells(theta_val+T0)
 title("temperature profile")

@@ -13,10 +13,10 @@
 using CoolProp, DataFrames, PyPlot, Polynomials, JFVM
 import GR
 # a table of density values
-depth_reservoir = 1000         # [m]
+depth_reservoir = 2500         # [m]
 p_res = depth_reservoir/10*1e5 # [Pa]
 T_res = 80 + 273.15            # [K]
-T_inj = 25 + 273.15            # [K]
+T_inj = 40 + 273.15            # [K]
 T     = collect(linspace(T_inj, T_res, 10))
 rho_water = zeros(length(T))
 mu_water  = zeros(length(T))
@@ -42,16 +42,18 @@ rho_fit = polyfit(T, rho_water, 2)
 # ylabel("Density [kg/m^3]")
 # legend()
 
-T0    = 25.0 + 273.15  # [K] reference temperature
+flow_m3_h = 100        # [m3/h]
+flow_inj  = flow_m3_h/3600 # m3/s
+perm_D  = 0.02        # Darcy
+perm    = perm_D*1e-12 # [m^2]
 L_res    = 500            # [m] will be changed later in a loop
-L_left = 500
-L_right = 500
+L_left = 500           # [m] distance between the left boundary and injection well
+L_right = 500          # [m] distance between the right boundary and injection well
 L = L_res + L_left + L_right # [m] domain length
 W     = 500            # [m]
 thick_res = 100        # [m]
-poros = 0.35           # [-]
-perm_D  = 0.02        # Darcy
-perm    = perm_D*1e-12 # [m^2]
+poros = 0.20           # [-]
+T0    = 25.0 + 273.15  # [K] reference temperature
 V_dp  = 0.2            # Dykstra-Parsons coef
 clx   = 0.1            # Correlation length in x direction
 cly   = 0.1            # Correlation length in y direction
@@ -59,8 +61,6 @@ T_inj = 40 + 273.15    # [K]
 theta_inj = T_inj - T0 # [K]
 T_res = 80 + 273.15    # [K]
 theta_res = T_res - T0 # [K]
-flow_m3_h = 50        # [m3/h]
-flow_inj  = flow_m3_h/3600 # m3/s
 λ_water  = PropsSI("conductivity", "T", T_res, "P", p_res, "water") # W/m/K
 λ_rock   = 0.16        # [W/m/K] rock conductivity (for sandstone from my thesis)
 λ_eff    = λ_water^poros*λ_rock^(1-poros) # effective conductivity
@@ -69,7 +69,7 @@ cp_rock  = 837.0       # [J/kg/K] rock heat capacity (for sandstone)
 rho_rock = 2650.0      # [kg/m^3] rock density (for sandstone)
 
 
-well_diameter = 0.1
+well_diameter = 7*0.0254 # [m]; converted from a well diameter of 7 inch
 nx_left = 20
 nx_right = 20
 nx_well           = 10
@@ -102,9 +102,10 @@ BCp = createBC(m)                 # pressure boundary
 BCp.left.a[:] = 0.0
 BCp.left.b[:] = 1.0
 BCp.left.c[:] = p_res
-BCp.right.a[:] = 0.0
-BCp.right.b[:] = 1.0
-BCp.right.c[:] = p_res
+# BCp.right.a[:] = 0.0
+# BCp.right.b[:] = 1.0
+# BCp.right.c[:] = p_res
+
 # BCp.left.a[left_range]   =
 #     perm_field.value[2, left_range]/polyval(mu_fit, T_inj)
 # BCp.left.b[left_range]   = 0.0
@@ -137,13 +138,15 @@ mu_init    = createCellVariable(m,
 mu_val     = copyCell(mu_init)
 
 dt_init    = (L*W*thick_res*poros)/flow_inj/50 # (L/Nx)/(u_inj/poros)   # [s] time step
-final_time = 50*dt_init              # [s]
+final_time = 100*dt_init              # [s]
 t_step     = collect([linspace(0, 5*dt_init, 30);
                       linspace(5.5*dt_init, final_time, 70)])
 n_steps = length(t_step) # number of time steps
 # variables to be stored:
 dp_res = zeros(n_steps)
 T_out  = zeros(n_steps)
+p_inj  = zeros(n_steps)
+p_out  = zeros(n_steps)
 T_out[1] = T_res
 
 # discretization
@@ -196,6 +199,8 @@ for t_ind in 2:length(t_step)
   end # end of inner loop
   # GR.imshow(internalCells(theta_val)+T0)
   T_out[t_ind]  = theta_val.value[ind_prod+1 ...]+T0
+  p_inj[t_ind]  = p_val.value[ind_inj+1 ...]
+  p_out[t_ind]  = p_val.value[ind_prod+1 ...]
   dp_res[t_ind] = p_val.value[ind_inj+1 ...]-p_val.value[ind_prod+1 ...]
                 #  0.5*(p_val.value[end, 1+ny+ny_well]+p_val.value[end-1, 1+ny+ny_well])
   rho_init   = copyCell(rho_val)
@@ -203,8 +208,10 @@ for t_ind in 2:length(t_step)
   theta_init = copyCell(theta_val)
 end
 dp_res[1] = dp_res[2] # pressure grad at time zero; assume that process has already started
+p_inj[1] = p_inj[2]
+p_out[1] = p_out[2]
 df = DataFrame(T_s = t_step, dp_Pa = dp_res, T_K = T_out)
-# DataFrames.writetable("Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv", df)
+DataFrames.writetable("Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv", df)
 figure(figsize=(8,2))
 visualizeCells(theta_val+T0)
 title("temperature profile")
@@ -217,3 +224,8 @@ figure()
 plot(t_step/(365*24*3600), dp_res/1e5)
 xlabel("time [year]")
 ylabel("Pressure difference [bar]")
+figure()
+plot(t_step/(365*24*3600), p_inj/1e5)
+plot(t_step/(365*24*3600), p_out/1e5)
+xlabel("time [year]")
+ylabel("Pressure [bar]")
