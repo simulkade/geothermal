@@ -218,7 +218,7 @@ for flow_m3_h in flow_range
       p_inj[1] = p_inj[2]
       p_out[1] = p_out[2]
       df = DataFrame(T_s = t_step, dp_Pa = dp_res, T_K = T_out, p_inj_Pa = p_inj, p_out_Pa = p_out)
-      f_name = "Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv"
+      f_name = "Q-$flow_m3_h-L-$L_res-k$perm_D.csv"
       DataFrames.writetable(f_name, df)
       push!(df_res, [flow_m3_h, perm_D, L_res, f_name])
       # figure(figsize=(8,2))
