@@ -27,20 +27,21 @@ end
 
 mu_fit  = polyfit(T, mu_water, 2)
 rho_fit = polyfit(T, rho_water, 2)
-# subplot(2,1,1)
-# scatter(T, mu_water, label = "μ data")
-# plot(T, polyval(mu_fit, T))
-# xlabel("T [K]")
-# ylabel("Viscosity [Pa.s]")
-# legend()
-# axis([minimum(T), maximum(T), minimum(mu_water), maximum(mu_water)])
-#
-# subplot(2,1,2)
-# scatter(T, rho_water, label = "ρ data")
-# plot(T, polyval(rho_fit, T))
-# xlabel("T [K]")
-# ylabel("Density [kg/m^3]")
-# legend()
+figure()
+subplot(2,1,1)
+scatter(T, mu_water, label = "μ data")
+plot(T, polyval(mu_fit, T))
+xlabel("T [K]")
+ylabel("Viscosity [Pa.s]")
+legend()
+axis([minimum(T), maximum(T), minimum(mu_water), maximum(mu_water)])
+
+subplot(2,1,2)
+scatter(T, rho_water, label = "ρ data")
+plot(T, polyval(rho_fit, T))
+xlabel("T [K]")
+ylabel("Density [kg/m^3]")
+legend()
 
 flow_m3_h = 100        # [m3/h]
 flow_inj  = flow_m3_h/3600 # m3/s
@@ -102,9 +103,9 @@ BCp = createBC(m)                 # pressure boundary
 BCp.left.a[:] = 0.0
 BCp.left.b[:] = 1.0
 BCp.left.c[:] = p_res
-# BCp.right.a[:] = 0.0
-# BCp.right.b[:] = 1.0
-# BCp.right.c[:] = p_res
+BCp.right.a[:] = 0.0
+BCp.right.b[:] = 1.0
+BCp.right.c[:] = p_res
 
 # BCp.left.a[left_range]   =
 #     perm_field.value[2, left_range]/polyval(mu_fit, T_inj)
@@ -210,8 +211,8 @@ end
 dp_res[1] = dp_res[2] # pressure grad at time zero; assume that process has already started
 p_inj[1] = p_inj[2]
 p_out[1] = p_out[2]
-df = DataFrame(T_s = t_step, dp_Pa = dp_res, T_K = T_out)
-DataFrames.writetable("Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv", df)
+df1 = DataFrame(T_s = t_step, dp_Pa = dp_res, T_K = T_out)
+# DataFrames.writetable("Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv", df1)
 figure(figsize=(8,2))
 visualizeCells(theta_val+T0)
 title("temperature profile")
