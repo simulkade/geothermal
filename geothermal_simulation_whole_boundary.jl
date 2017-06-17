@@ -84,9 +84,9 @@ Ny  = length(y_range)-1
 perm_val   = perm # permfieldlogrnde(Nx, Ny, perm, V_dp, clx, cly)
 perm_field = createCellVariable(m, perm_val)
 
-left_range  = ny+ny_well:ny+ny_well
-right_range = ny+ny_well:ny+ny_well
-u_inj = flow_inj/(m.cellsize.y[ny+ny_well+1]*thick_res)
+left_range  = 1:Ny # ny+ny_well:ny+ny_well
+right_range = 1:Ny #ny+ny_well:ny+ny_well
+u_inj = flow_inj/(W*thick_res) # (m.cellsize.y[ny+ny_well+1]*thick_res)
 BCp = createBC(m)                 # pressure boundary
 BCp.left.a[left_range]   =
     perm_field.value[2, left_range]/polyval(mu_fit, T_inj)
