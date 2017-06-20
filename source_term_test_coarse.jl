@@ -10,7 +10,7 @@
 # You can install CoolProp by:
 # Pkg.clone("https://github.com/vimalaad/CoolProp.jl")
 # Pkg.build("CoolProp")
-using CoolProp, DataFrames, PyPlot, Polynomials, JFVM
+using CoolProp, DataFrames, PyPlot, Polynomials, MUMPS, JFVM
 import GR
 # a table of density values
 depth_reservoir = 2500         # [m]
@@ -27,21 +27,21 @@ end
 
 mu_fit  = polyfit(T, mu_water, 2)
 rho_fit = polyfit(T, rho_water, 2)
-figure()
-subplot(2,1,1)
-scatter(T, mu_water, label = "μ data")
-plot(T, polyval(mu_fit, T))
-xlabel("T [K]")
-ylabel("Viscosity [Pa.s]")
-legend()
-axis([minimum(T), maximum(T), minimum(mu_water), maximum(mu_water)])
-
-subplot(2,1,2)
-scatter(T, rho_water, label = "ρ data")
-plot(T, polyval(rho_fit, T))
-xlabel("T [K]")
-ylabel("Density [kg/m^3]")
-legend()
+# figure()
+# subplot(2,1,1)
+# scatter(T, mu_water, label = "μ data")
+# plot(T, polyval(mu_fit, T))
+# xlabel("T [K]")
+# ylabel("Viscosity [Pa.s]")
+# legend()
+# axis([minimum(T), maximum(T), minimum(mu_water), maximum(mu_water)])
+#
+# subplot(2,1,2)
+# scatter(T, rho_water, label = "ρ data")
+# plot(T, polyval(rho_fit, T))
+# xlabel("T [K]")
+# ylabel("Density [kg/m^3]")
+# legend()
 
 flow_m3_h = 100        # [m3/h]
 flow_inj  = flow_m3_h/3600 # m3/s
@@ -71,34 +71,41 @@ rho_rock = 2650.0      # [kg/m^3] rock density (for sandstone)
 
 
 well_diameter = 7*0.0254 # [m]; converted from a well diameter of 7 inch
-nx_left = 20
-nx_right = 20
-nx_well           = 10
-ny_well           = 10
-nx                = 40
-ny                = 15
-x_range =
-  collect([linspace(0, L_left-(nx_well+1)*well_diameter, nx_left);
-           linspace(L_left-nx_well*well_diameter, L_left+nx_well*well_diameter, 2*nx_well);
-           linspace(L_left+(nx_well+1)*well_diameter, L_left+L_res-(nx_well+1)*well_diameter, nx);
-           linspace(L_left+L_res-nx_well*well_diameter, L_left+L_res+nx_well*well_diameter, 2*nx_well);
-           linspace(L_left+L_res+(nx_well+1)*well_diameter, L, nx_right)])
-y_range = collect([linspace(0, 0.5*W-(ny_well+1)*well_diameter, ny);
-                   linspace(0.5*W-ny_well*well_diameter, 0.5*W+ny_well*well_diameter, 2*ny_well);
-                   linspace(0.5*W+(ny_well+1)*well_diameter, W, ny)])
-ind_inj  = [nx_left+nx_well+1, ny+ny_well]
-ind_prod = [nx_left+nx_well+nx_well+nx+nx_well, ny+ny_well]
-m   = createMesh2D(x_range, y_range)  # 2D Cartesian grid
+# nx_left = 20
+# nx_right = 20
+# nx_well           = 10
+# ny_well           = 10
+# nx                = 40
+# ny                = 15
+# x_range =
+#   collect([linspace(0, L_left-(nx_well+1)*well_diameter, nx_left);
+#            linspace(L_left-nx_well*well_diameter, L_left+nx_well*well_diameter, 2*nx_well);
+#            linspace(L_left+(nx_well+1)*well_diameter, L_left+L_res-(nx_well+1)*well_diameter, nx);
+#            linspace(L_left+L_res-nx_well*well_diameter, L_left+L_res+nx_well*well_diameter, 2*nx_well);
+#            linspace(L_left+L_res+(nx_well+1)*well_diameter, L, nx_right)])
+# y_range = collect([linspace(0, 0.5*W-(ny+1)*well_diameter, ny);
+#                    linspace(0.5*W-ny*well_diameter, 0.5*W+ny*well_diameter, 2*ny_well);
+#                    linspace(0.5*W+(ny+1)*well_diameter, W, ny)])
+# ind_inj  = [nx_left+nx_well+1, ny+ny_well]
+# ind_prod = [nx_left+nx_well+nx_well+nx+nx_well, ny+ny_well]
+mesh_refine = 8
+Nx = mesh_refine*150
+Ny = mesh_refine*50
+m = createMesh2D(Nx, Ny, L, W)
+ind_inj = mesh_refine*[50, 25]
+ind_prod = mesh_refine*[100,25]
+# m   = createMesh2D(x_range, y_range)  # 2D Cartesian grid
 v_cell = thick_res*cellVolume(m)
-Nx  = length(x_range)-1
-Ny  = length(y_range)-1
+r_eq = 0.2*m.cellsize.x[ind_inj[1]+1] # Peaceman well model
+# Nx  = length(x_range)-1
+# Ny  = length(y_range)-1
 
 perm_val   = perm # permfieldlogrnde(Nx, Ny, perm, V_dp, clx, cly)
 perm_field = createCellVariable(m, perm_val)
 
-left_range  = ny+ny_well:ny+ny_well
-right_range = ny+ny_well:ny+ny_well
-u_inj = flow_inj/(m.cellsize.y[ny+ny_well+1]*thick_res)
+# left_range  = ny+ny_well:ny+ny_well
+# right_range = ny+ny_well:ny+ny_well
+# u_inj = flow_inj/(m.cellsize.y[ny+ny_well+1]*thick_res)
 BCp = createBC(m)                 # pressure boundary
 BCp.left.a[:] = 0.0
 BCp.left.b[:] = 1.0
@@ -164,69 +171,28 @@ q_prod.value[ind_prod+1 ...] = -flow_inj/v_cell.value[ind_prod+1 ...]
 
 q_cont = createCellVariable(m, 0)
 
-for t_ind in 2:length(t_step)
-  dt = t_step[t_ind]-t_step[t_ind-1]
-  t  = t_step[t_ind]
-  println(t_ind)
-  for i in 1:3 # internal loop
-    # solve pressure equation
-    RHS_ddt_p   = constantSourceTerm(poros/dt*(rho_val - rho_init))
-    water_mobil = harmonicMean(perm_field./mu_val)
-    rho_face = arithmeticMean(rho_val)
-    M_diff_p    = diffusionTerm(-rho_face.*water_mobil)
-    q_cont.value[ind_inj+1 ...] = rho_val.value[ind_inj+1 ...]*flow_inj/v_cell.value[ind_inj+1 ...]
-    q_cont.value[ind_prod+1 ...] = -rho_val.value[ind_prod+1 ...]*flow_inj/v_cell.value[ind_prod+1 ...]
-    RHScont = constantSourceTerm(q_cont)
-    p_val       = solveLinearPDE(m, M_diff_p + M_BCp,
-        RHS_BCp - RHS_ddt_p + RHScont)
+  # solve pressure equation
+  water_mobil = harmonicMean(perm_field./mu_val)
+  rho_face = arithmeticMean(rho_val)
+  M_diff_p    = diffusionTerm(-rho_face.*water_mobil)
+  q_cont.value[ind_inj+1 ...] = rho_val.value[ind_inj+1 ...]*flow_inj/v_cell.value[ind_inj+1 ...]
+  q_cont.value[ind_prod+1 ...] = -rho_val.value[ind_prod+1 ...]*flow_inj/v_cell.value[ind_prod+1 ...]
+  RHScont = constantSourceTerm(q_cont)
+  p_val       = solveLinearPDE(m, M_diff_p + M_BCp,
+      RHS_BCp + RHScont)
 
-    # velocity vector
-    u = -water_mobil.*gradientTerm(p_val)
+  # velocity vector
+  u = -water_mobil.*gradientTerm(p_val)
 
-    # solve heat equation
-    α                  = poros*rho_val*cp_water+(1-poros)*rho_rock*cp_rock
-    M_trans, RHS_trans = transientTerm(theta_init, dt, α)
-    RHS_ddt_t          = constantSourceTerm(cp_water*poros*theta_val.*(rho_val - rho_init)/dt)
-    M_conv             = convectionUpwindTerm(cp_water*rho_face.*u)
-    # RHSprodt = constantSourceTerm(-rho_val.value[ind_prod+1 ...]*cp_water*T0*q_prod)
-    Mprodt   = linearSourceTerm(rho_val.value[ind_prod+1 ...]*cp_water*q_prod)
-    theta_val          = solveLinearPDE(m,
-        M_BCt + M_conv + M_trans + M_conductivity - Mprodt,
-        RHS_BCt + RHS_trans + RHSinjt - RHS_ddt_t)
+  WI_inj = 2*π*perm_val*thick_res/(mu_val.value[ind_inj+1 ...]*log(r_eq/(well_diameter/2)))
+  WI_prod = 2*π*perm_val*thick_res/(mu_val.value[ind_prod+1 ...]*log(r_eq/(well_diameter/2)))
 
-    # update density and viscosity values
-    rho_val.value[:] = polyval(rho_fit, theta_val.value[:] + T0)
-    mu_val.value[:]  = polyval(mu_fit, theta_val.value[:] + T0)
-  end # end of inner loop
-  # GR.imshow(internalCells(theta_val)+T0)
-  T_out[t_ind]  = theta_val.value[ind_prod+1 ...]+T0
-  p_inj[t_ind]  = p_val.value[ind_inj+1 ...]
-  p_out[t_ind]  = p_val.value[ind_prod+1 ...]
-  dp_res[t_ind] = p_val.value[ind_inj+1 ...]-p_val.value[ind_prod+1 ...]
-                #  0.5*(p_val.value[end, 1+ny+ny_well]+p_val.value[end-1, 1+ny+ny_well])
-  rho_init   = copyCell(rho_val)
-  p_init     = copyCell(p_val) # not necessary
-  theta_init = copyCell(theta_val)
-end
-dp_res[1] = dp_res[2] # pressure grad at time zero; assume that process has already started
-p_inj[1] = p_inj[2]
-p_out[1] = p_out[2]
-df1 = DataFrame(T_s = t_step, dp_Pa = dp_res, T_K = T_out)
-# DataFrames.writetable("Q-$flow_m3_h-L-$flow_m3_h-k$perm_D.csv", df1)
-figure(figsize=(8,2))
-visualizeCells(theta_val+T0)
-title("temperature profile")
-colorbar()
 figure()
-plot(t_step/(365*24*3600), T_out, ".")
-xlabel("time [year]")
-ylabel("Water temperature [K]")
+visualizeCells(p_val)
 figure()
-plot(t_step/(365*24*3600), dp_res/1e5)
-xlabel("time [year]")
-ylabel("Pressure difference [bar]")
-figure()
-plot(t_step/(365*24*3600), p_inj/1e5)
-plot(t_step/(365*24*3600), p_out/1e5)
-xlabel("time [year]")
-ylabel("Pressure [bar]")
+plot(m.cellcenters.x[ind_inj[1]:ind_prod[1]], p_val.value[ind_inj[1]+1:ind_prod[1]+1, ind_inj[2]+1], ".")
+p_inj  = p_val.value[ind_inj+1 ...]+flow_inj/WI_inj
+p_out  = p_val.value[ind_prod+1 ...]-flow_inj/WI_prod
+dp_res = p_val.value[ind_inj+1 ...]-p_val.value[ind_prod+1 ...]
+dp_peaceman = p_inj - p_out
+println("p_inj= $p_inj, p_out= $p_out, dp = $dp_res, dp_peaceman= $dp_peaceman")

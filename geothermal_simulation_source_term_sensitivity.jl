@@ -89,11 +89,11 @@ for flow_m3_h in flow_range
                  linspace(L_left+(nx_well+1)*well_diameter, L_left+L_res-(nx_well+1)*well_diameter, nx);
                  linspace(L_left+L_res-nx_well*well_diameter, L_left+L_res+nx_well*well_diameter, 2*nx_well);
                  linspace(L_left+L_res+(nx_well+1)*well_diameter, L, nx_right)])
-      y_range = collect([linspace(0, 0.5*W-(ny+1)*well_diameter, ny);
-                         linspace(0.5*W-ny*well_diameter, 0.5*W+ny*well_diameter, 2*ny_well);
-                         linspace(0.5*W+(ny+1)*well_diameter, W, ny)])
+      y_range = collect([linspace(0, 0.5*W-(ny_well+1)*well_diameter, ny);
+                         linspace(0.5*W-ny_well*well_diameter, 0.5*W+ny_well*well_diameter, 2*ny_well);
+                         linspace(0.5*W+(ny_well+1)*well_diameter, W, ny)])
       ind_inj  = [nx_left+nx_well+1, ny+ny_well]
-      ind_prod = [nx_left+nx_well+nx_well+nx, ny+ny_well]
+      ind_prod = [nx_left+nx_well+nx_well+nx+nx_well, ny+ny_well]
       m   = createMesh2D(x_range, y_range)  # 2D Cartesian grid
       v_cell = thick_res*cellVolume(m)
       Nx  = length(x_range)-1

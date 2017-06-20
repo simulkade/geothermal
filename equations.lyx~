@@ -80,9 +80,10 @@
 
 in a more simplified terms (single component):
 \begin_inset Formula 
-\[
-\frac{\partial}{\partial t}\left(\varphi\rho c_{p,w}\left(T-T_{0}\right)+\left(1-\varphi\right)\rho_{s}c_{p,s}\left(T-T_{0}\right)\right)+\nabla.\left(-\lambda\nabla T+\rho c_{p,w}\left(T-T_{0}\right)\mathbf{u}\right)=0
-\]
+\begin{multline*}
+\frac{\partial}{\partial t}\left(\varphi\rho c_{p,w}\left(T-T_{0}\right)+\left(1-\varphi\right)\rho_{s}c_{p,s}\left(T-T_{0}\right)\right)+\\
++\nabla.\left(-\lambda\nabla T+\rho c_{p,w}\left(T-T_{0}\right)\mathbf{u}\right)=0
+\end{multline*}
 
 \end_inset
 
@@ -825,6 +826,72 @@ m
 \end_inset
 
 
+\end_layout
+
+\begin_layout Section
+Well model
+\end_layout
+
+\begin_layout Standard
+To include a well model in my simulations, I have to add one row to the
+ linearized pressure equation sparse matrix of coefficients and the RHS
+ vector (Not correct, explained below).
+ The Peaceman well model for a homogeneous porous medium reads:
+\begin_inset Formula 
+\[
+q=WI\left(p-p_{bh}\right)
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+WI=\frac{2\pi kh}{\mu\ln\left(r_{e}/r_{w}\right)}
+\]
+
+\end_inset
+
+For a grid cell that 
+\begin_inset Formula $\Delta x=\Delta y$
+\end_inset
+
+, the equivalent radius 
+\begin_inset Formula $r_{e}$
+\end_inset
+
+ is given by 
+\begin_inset Formula $0.2\Delta x$
+\end_inset
+
+.
+ This can be implemented in the code, depending on the well definition.
+ If the flow rate is specified, then the flow is added to the equation as
+ a source/sink term and the following equation is used to calculate the
+ well pressure:
+\begin_inset Formula 
+\[
+p_{bh}=p-\frac{q}{WI},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $p$
+\end_inset
+
+ is the cell pressure.
+ If the bottom-hole pressure is specified, then the well can be defined
+ as a linear source/sink plus a constant source/sink term term:
+\begin_inset Formula 
+\[
+linearSourceTerm(WI*p)+constantSourceTerm(-WI*p_{bh})
+\]
+
+\end_inset
+
+Apparently, it is easier than what I assumed.
+ There is no need to add a new row to the matrix of coefficients.
 \end_layout
 
 \end_body

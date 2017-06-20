@@ -77,28 +77,34 @@ nx_well           = 10
 ny_well           = 10
 nx                = 40
 ny                = 15
-x_range =
-  collect([linspace(0, L_left-(nx_well+1)*well_diameter, nx_left);
-           linspace(L_left-nx_well*well_diameter, L_left+nx_well*well_diameter, 2*nx_well);
-           linspace(L_left+(nx_well+1)*well_diameter, L_left+L_res-(nx_well+1)*well_diameter, nx);
-           linspace(L_left+L_res-nx_well*well_diameter, L_left+L_res+nx_well*well_diameter, 2*nx_well);
-           linspace(L_left+L_res+(nx_well+1)*well_diameter, L, nx_right)])
-y_range = collect([linspace(0, 0.5*W-(ny_well+1)*well_diameter, ny);
-                   linspace(0.5*W-ny_well*well_diameter, 0.5*W+ny_well*well_diameter, 2*ny_well);
-                   linspace(0.5*W+(ny_well+1)*well_diameter, W, ny)])
-ind_inj  = [nx_left+nx_well+1, ny+ny_well]
-ind_prod = [nx_left+nx_well+nx_well+nx+nx_well, ny+ny_well]
-m   = createMesh2D(x_range, y_range)  # 2D Cartesian grid
+# x_range =
+#   collect([linspace(0, L_left-(nx_well+1)*well_diameter, nx_left);
+#            linspace(L_left-nx_well*well_diameter, L_left+nx_well*well_diameter, 2*nx_well);
+#            linspace(L_left+(nx_well+1)*well_diameter, L_left+L_res-(nx_well+1)*well_diameter, nx);
+#            linspace(L_left+L_res-nx_well*well_diameter, L_left+L_res+nx_well*well_diameter, 2*nx_well);
+#            linspace(L_left+L_res+(nx_well+1)*well_diameter, L, nx_right)])
+# y_range = collect([linspace(0, 0.5*W-(ny+1)*well_diameter, ny);
+#                    linspace(0.5*W-ny*well_diameter, 0.5*W+ny*well_diameter, 2*ny_well);
+#                    linspace(0.5*W+(ny+1)*well_diameter, W, ny)])
+# ind_inj  = [nx_left+nx_well+1, ny+ny_well]
+# ind_prod = [nx_left+nx_well+nx_well+nx, ny+ny_well]
+# m   = createMesh2D(x_range, y_range)  # 2D Cartesian grid
+Nx = 300
+Ny = 100
+m = createMesh2D(Nx, Ny, L, W)
+ind_inj = 2*[50, 25]
+ind_prod = 2*[100,25]
+r_eq = 0.2*m.cellsize.x[ind_inj[1]+1] # Peaceman well model
 v_cell = thick_res*cellVolume(m)
-Nx  = length(x_range)-1
-Ny  = length(y_range)-1
+# Nx  = length(x_range)-1
+# Ny  = length(y_range)-1
 
 perm_val   = perm # permfieldlogrnde(Nx, Ny, perm, V_dp, clx, cly)
 perm_field = createCellVariable(m, perm_val)
 
-left_range  = ny+ny_well:ny+ny_well
-right_range = ny+ny_well:ny+ny_well
-u_inj = flow_inj/(m.cellsize.y[ny+ny_well+1]*thick_res)
+# left_range  = ny+ny_well:ny+ny_well
+# right_range = ny+ny_well:ny+ny_well
+# u_inj = flow_inj/(m.cellsize.y[ny+ny_well+1]*thick_res)
 BCp = createBC(m)                 # pressure boundary
 BCp.left.a[:] = 0.0
 BCp.left.b[:] = 1.0
@@ -200,9 +206,12 @@ for t_ind in 2:length(t_step)
   end # end of inner loop
   # GR.imshow(internalCells(theta_val)+T0)
   T_out[t_ind]  = theta_val.value[ind_prod+1 ...]+T0
-  p_inj[t_ind]  = p_val.value[ind_inj+1 ...]
-  p_out[t_ind]  = p_val.value[ind_prod+1 ...]
-  dp_res[t_ind] = p_val.value[ind_inj+1 ...]-p_val.value[ind_prod+1 ...]
+  WI_inj = 2*π*perm_val*thick_res/(mu_val.value[ind_inj+1 ...]*log(r_eq/(well_diameter/2)))
+  WI_prod = 2*π*perm_val*thick_res/(mu_val.value[ind_prod+1 ...]*log(r_eq/(well_diameter/2)))
+  p_inj[t_ind]  = p_val.value[ind_inj+1 ...]+flow_inj/WI_inj
+  p_out[t_ind]  = p_val.value[ind_prod+1 ...]-flow_inj/WI_prod
+  # dp_res[t_ind] = p_val.value[ind_inj+1 ...]-p_val.value[ind_prod+1 ...]
+  dp_res[t_ind] = p_inj[t_ind] - p_out[t_ind]
                 #  0.5*(p_val.value[end, 1+ny+ny_well]+p_val.value[end-1, 1+ny+ny_well])
   rho_init   = copyCell(rho_val)
   p_init     = copyCell(p_val) # not necessary
