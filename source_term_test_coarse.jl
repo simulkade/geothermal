@@ -196,3 +196,8 @@ p_out  = p_val.value[ind_prod+1 ...]-flow_inj/WI_prod
 dp_res = p_val.value[ind_inj+1 ...]-p_val.value[ind_prod+1 ...]
 dp_peaceman = p_inj - p_out
 println("p_inj= $p_inj, p_out= $p_out, dp = $dp_res, dp_peaceman= $dp_peaceman")
+
+x  = [m.cellcenters.x[ind_inj[1]-1]; m.cellcenters.x[ind_inj[1]:ind_prod[1]]; m.cellcenters.x[ind_prod[1]+1]]
+p_prf = [p_inj; p_val.value[ind_inj[1]+1:ind_prod[1]+1, ind_inj[2]+1]; p_out]
+df1 = DataFrame(x_m = x, p_pa = p_prf)
+writetable("p_profile_coarse_peaceman", df1)

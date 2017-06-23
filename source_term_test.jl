@@ -184,3 +184,6 @@ p_inj  = p_val.value[ind_inj+1 ...]
 p_out  = p_val.value[ind_prod+1 ...]
 dp_res = p_val.value[ind_inj+1 ...]-p_val.value[ind_prod+1 ...]
 println("p_inj= $p_inj, p_out= $p_out, dp = $dp_res")
+
+df1 = DataFrame(x_m = m.cellcenters.x[ind_inj[1]:ind_prod[1]], p_pa = p_val.value[ind_inj[1]+1:ind_prod[1]+1, ind_inj[2]+1])
+writetable("p_profile_local_refine", df1)
