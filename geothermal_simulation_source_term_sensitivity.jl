@@ -13,10 +13,13 @@
 using CoolProp, DataFrames, PyPlot, Polynomials, JFVM
 import GR
 # a table of density values
+function run_geothermal_sim()
+g_gravity = 9.81 # [m/s^2]
 depth_reservoir = 2500         # [m]
-p_res = depth_reservoir/10*1e5 # [Pa]
+p_surf= 101325.0               # [Pa]
 T_res = 80 + 273.15            # [K]
 T_inj = 40 + 273.15            # [K]
+p_res = PropsSI("D", "T", T_res, "P", p_surf, "water")*g_gravity*depth_reservoir # [Pa]
 T     = collect(linspace(T_inj, T_res, 10))
 rho_water = zeros(length(T))
 mu_water  = zeros(length(T))
@@ -50,7 +53,8 @@ for flow_m3_h in flow_range
   for perm_D in perm_range
     for L_res in L_range
       # flow_m3_h = 100        # [m3/h]; change in loop
-      flow_inj  = flow_m3_h/3600 # m3/s
+      flow_prod  = flow_m3_h/3600 # m3/s
+      flow_inj   = flow_m3_h/3600*PropsSI("D", "T", T_res, "P", p_surf, "H2O")/PropsSI("D", "T", T_inj, "P", p_surf, "H2O")
       # perm_D  = 0.02        # Darcy; change in loop
       perm    = perm_D*1e-12 # [m^2]
       # L_res    = 500            # [m]; change in loop
@@ -166,7 +170,7 @@ for flow_m3_h in flow_range
       RHSinjt = constantSourceTerm(rho_water_inj*cp_water*(T_inj-T0)*q_inj)
 
       q_prod = createCellVariable(m, 0)
-      q_prod.value[ind_prod+1 ...] = -flow_inj/v_cell.value[ind_prod+1 ...]
+      q_prod.value[ind_prod+1 ...] = -flow_prod/v_cell.value[ind_prod+1 ...]
 
       q_cont = createCellVariable(m, 0)
 
@@ -181,7 +185,7 @@ for flow_m3_h in flow_range
           rho_face = arithmeticMean(rho_val)
           M_diff_p    = diffusionTerm(-rho_face.*water_mobil)
           q_cont.value[ind_inj+1 ...] = rho_val.value[ind_inj+1 ...]*flow_inj/v_cell.value[ind_inj+1 ...]
-          q_cont.value[ind_prod+1 ...] = -rho_val.value[ind_prod+1 ...]*flow_inj/v_cell.value[ind_prod+1 ...]
+          q_cont.value[ind_prod+1 ...] = -rho_val.value[ind_prod+1 ...]*flow_prod/v_cell.value[ind_prod+1 ...]
           RHScont = constantSourceTerm(q_cont)
           p_val       = solveLinearPDE(m, M_diff_p + M_BCp,
               RHS_BCp - RHS_ddt_p + RHScont)
@@ -195,6 +199,8 @@ for flow_m3_h in flow_range
           RHS_ddt_t          = constantSourceTerm(cp_water*poros*theta_val.*(rho_val - rho_init)/dt)
           M_conv             = convectionUpwindTerm(cp_water*rho_face.*u)
           # RHSprodt = constantSourceTerm(-rho_val.value[ind_prod+1 ...]*cp_water*T0*q_prod)
+          q_inj.value[ind_inj+1 ...] = flow_inj/v_cell.value[ind_inj+1 ...]
+          RHSinjt = constantSourceTerm(rho_water_inj*cp_water*(T_inj-T0)*q_inj)
           Mprodt   = linearSourceTerm(rho_val.value[ind_prod+1 ...]*cp_water*q_prod)
           theta_val          = solveLinearPDE(m,
               M_BCt + M_conv + M_trans + M_conductivity - Mprodt,
@@ -203,6 +209,7 @@ for flow_m3_h in flow_range
           # update density and viscosity values
           rho_val.value[:] = polyval(rho_fit, theta_val.value[:] + T0)
           mu_val.value[:]  = polyval(mu_fit, theta_val.value[:] + T0)
+          flow_inj   = flow_prod*rho_val.value[ind_prod+1 ...]/rho_water_inj
         end # end of inner loop
         # GR.imshow(internalCells(theta_val)+T0)
         T_out[t_ind]  = theta_val.value[ind_prod+1 ...]+T0
@@ -218,7 +225,7 @@ for flow_m3_h in flow_range
       p_inj[1] = p_inj[2]
       p_out[1] = p_out[2]
       df = DataFrame(T_s = t_step, dp_Pa = dp_res, T_K = T_out, p_inj_Pa = p_inj, p_out_Pa = p_out)
-      f_name = "Q-$flow_m3_h-L-$L_res-k$perm_D.csv"
+      f_name = "results/Q-$flow_m3_h-L-$L_res-k$perm_D.csv"
       DataFrames.writetable(f_name, df)
       push!(df_res, [flow_m3_h, perm_D, L_res, f_name])
       # figure(figsize=(8,2))
@@ -241,4 +248,5 @@ for flow_m3_h in flow_range
     end
   end
 end
-DataFrames.writetable("res_guide.csv", df_res)
+DataFrames.writetable("results/res_guide.csv", df_res)
+end
