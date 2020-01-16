@@ -1,4 +1,4 @@
-function T=geotherm_iso(m, p, qin, qout)
+function T=geotherm_iso(m, p, qin, qout, t_final)
 labda_s=2.6; % W/(m.K)
 labda_w=0.6; % W/(m.K)
 rho_w=1000; % kg/m^3
@@ -29,8 +29,9 @@ Mcond=diffusionTerm(harmonicMean(labda));
 RHSs1=constantSourceTerm(rho_w*cp_w*(T_inj-T_0)*qin);
 Ms=linearSourceTerm(-rho_w*cp_w*qout);
 RHSs2=constantSourceTerm(-rho_w*cp_w*T_0*qout);
-dt=100*24*3600; % s
-t_final=200*dt;
+% dt=100*24*3600; % s
+% t_final=200*dt;
+dt = t_final/100
 for t=dt:dt:t_final
     [Mt, RHSt]=transientTerm(T0, dt, a);
     M=Mt+Mconv-Mcond+Mbc+Ms;
